@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36811.4
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "havWndSwitcher", "havWndSwitcher.csproj", "{938C6346-9995-47DC-99C6-E085B433D684}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{938C6346-9995-47DC-99C6-E085B433D684}.Debug|x64.ActiveCfg = Debug|x64
+		{938C6346-9995-47DC-99C6-E085B433D684}.Debug|x64.Build.0 = Debug|x64
+		{938C6346-9995-47DC-99C6-E085B433D684}.Release|x64.ActiveCfg = Release|x64
+		{938C6346-9995-47DC-99C6-E085B433D684}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8B28CDD8-BA93-4473-97C3-21975A7A54DD}
+	EndGlobalSection
+EndGlobal
