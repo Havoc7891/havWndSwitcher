@@ -32,6 +32,7 @@
   "Dialog_PressAKey": "Taste drücken...",
   "About_Body": "Globaler Hotkey-Fensterwechsler.",
   "About_Version": "Version",
+  "Hotkeys_F12NotAllowed": "F12 kann nicht als globales Tastenkürzel verwendet werden. Wählen Sie eine andere Taste.",
   "Hotkeys_Updated": "Einstellungen aktualisiert",
   "Hotkeys_Restarted": "Hotkeys neu gestartet",
   "Hotkeys_Restart_Failed": "Hotkeys konnten nicht registriert werden. Versuche andere Tasten in der Konfiguration.",

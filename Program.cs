@@ -1,36 +1,4 @@
-// havWndSwitcher
-//
-// ABOUT
-//
-// A WinForms background app that registers global hotkeys to switch windows with optional switching rules.
-//
-// REVISION HISTORY
-//
-// v1.0 (2025-12-31) - First release.
-//
-// LICENSE
-//
-// MIT License
-//
-// Copyright (c) 2025 René Nicolaus
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 using System.Globalization;
 using System.Reflection;
@@ -42,7 +10,7 @@ namespace havWndSwitcher
     internal static class Program
     {
         /// <summary>
-        ///  The main entry point for the application.
+        /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
@@ -69,7 +37,11 @@ namespace havWndSwitcher
 
         public static void Initialize(string langRoot, string language)
         {
-            _languages = LoadLanguageFile(Path.Combine(langRoot, "en.json")) ?? new Dictionary<string, string>();
+            using var english = typeof(Localization).Assembly.GetManifestResourceStream("languages.en.json");
+            _languages = english is null
+                ? new Dictionary<string, string>()
+                : JsonSerializer.Deserialize<Dictionary<string, string>>(english) ?? new Dictionary<string, string>();
+            MergeLanguageFile(Path.Combine(langRoot, "en.json"), _languages);
 
             if (!string.Equals(language, "en", StringComparison.OrdinalIgnoreCase))
             {
@@ -136,9 +108,9 @@ namespace havWndSwitcher
                 }
             }
 
-            if (list.Count == 0)
+            if (!list.Any(item => string.Equals(item.Code, "en", StringComparison.OrdinalIgnoreCase)))
             {
-                return [("en", "English")];
+                list.Add(("en", "English"));
             }
 
             list.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Code, b.Code));
@@ -174,7 +146,10 @@ namespace havWndSwitcher
 
             foreach (var kvp in data)
             {
-                target[kvp.Key] = kvp.Value;
+                if (kvp.Value is not null)
+                {
+                    target[kvp.Key] = kvp.Value;
+                }
             }
         }
 
@@ -342,6 +317,7 @@ namespace havWndSwitcher
         private readonly Button _overrideCapture = new();
         private readonly NumericUpDown _freshSeconds = new();
         private readonly ComboBox _language = new();
+        private readonly Label _hotkeyError = new() { ForeColor = Color.Firebrick };
 
         private TextBox? _captureTarget;
         private Action<Keys>? _captureSetter;
@@ -368,6 +344,7 @@ namespace havWndSwitcher
             StartPosition = FormStartPosition.CenterScreen;
             KeyPreview = true;
             KeyDown += OnDialogKeyDown;
+            FormClosing += OnDialogFormClosing;
 
             var nextWindowLabel = new Label { Text = Localization.Entry("Dialog_NextWindow"), AutoSize = true };
             var nextWindowModsLabel = new Label { Text = Localization.Entry("Dialog_Modifiers"), AutoSize = true };
@@ -469,6 +446,13 @@ namespace havWndSwitcher
             _language.Location = new Point(fieldLeft, y - labelToControlOffset);
             y = (y - labelToControlOffset) + _language.Height + rowGap;
 
+            const int errorWidth = 416;
+            _hotkeyError.Location = new Point(leftMargin, y);
+            _hotkeyError.Size = TextRenderer.MeasureText(Localization.Entry("Hotkeys_F12NotAllowed"),
+                _hotkeyError.Font, new Size(errorWidth, int.MaxValue), TextFormatFlags.WordBreak);
+            _hotkeyError.Width = errorWidth;
+            y += _hotkeyError.Height + rowGap;
+
             var reset = new Button { Text = Localization.Entry("Dialog_Reset"), Location = new Point(leftMargin, y), Width = 110 };
             var ok = new Button { Text = Localization.Entry("Dialog_OK"), DialogResult = DialogResult.OK, Location = new Point(265, y) };
             var cancel = new Button { Text = Localization.Entry("Dialog_Cancel"), DialogResult = DialogResult.Cancel, Location = new Point(345, y) };
@@ -486,7 +470,7 @@ namespace havWndSwitcher
                 overrideLabel, _overrideKeyBox, _overrideCapture,
                 freshLabel, _freshSeconds,
                 languageLabel, _language,
-                reset, ok, cancel
+                _hotkeyError, reset, ok, cancel
             ]);
         }
 
@@ -549,6 +533,7 @@ namespace havWndSwitcher
             ApplyModifiers(_previousWindowMods, SwitcherApp.MOD_NONE);
 
             _freshSeconds.Value = 5;
+            _hotkeyError.Text = string.Empty;
         }
 
         private void BeginCapture(TextBox box, Action<Keys> setter)
@@ -566,12 +551,31 @@ namespace havWndSwitcher
                 return;
             }
 
+            e.SuppressKeyPress = true;
+            e.Handled = true;
+
+            if (e.KeyCode == Keys.F12 && _captureTarget != _overrideKeyBox)
+            {
+                _hotkeyError.Text = Localization.Entry("Hotkeys_F12NotAllowed");
+                return;
+            }
+
             _captureSetter(e.KeyCode);
             _captureTarget.Text = HotkeyText.FormatKey(e.KeyCode);
             _captureTarget = null;
             _captureSetter = null;
-            e.SuppressKeyPress = true;
-            e.Handled = true;
+
+            _hotkeyError.Text = string.Empty;
+        }
+
+        private void OnDialogFormClosing(object? sender, FormClosingEventArgs e)
+        {
+            if (DialogResult == DialogResult.OK &&
+                (_nextWindowKey == Keys.F12 || _previousWindowKey == Keys.F12))
+            {
+                _hotkeyError.Text = Localization.Entry("Hotkeys_F12NotAllowed");
+                e.Cancel = true;
+            }
         }
 
         private static uint GetModifiers(CheckedListBox list)
@@ -947,8 +951,10 @@ namespace havWndSwitcher
         {
             uint nextWindowMods = ConfigService.CurrentConfig.NextWindowModifiers;
             uint previousWindowMods = ConfigService.CurrentConfig.PreviousWindowModifiers;
-            bool nextWindow = NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_NEXT_WINDOW, nextWindowMods, ConfigService.CurrentConfig.NextWindowKey);
-            bool previousWindow = NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_PREVIOUS_WINDOW, previousWindowMods, ConfigService.CurrentConfig.PreviousWindowKey);
+            bool nextWindow = ConfigService.CurrentConfig.NextWindowKey != (int)Keys.F12 &&
+                NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_NEXT_WINDOW, nextWindowMods, ConfigService.CurrentConfig.NextWindowKey);
+            bool previousWindow = ConfigService.CurrentConfig.PreviousWindowKey != (int)Keys.F12 &&
+                NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_PREVIOUS_WINDOW, previousWindowMods, ConfigService.CurrentConfig.PreviousWindowKey);
             RegisterOverrideHotkeys(nextWindowMods, previousWindowMods);
             if (!nextWindow || !previousWindow)
             {
@@ -975,13 +981,13 @@ namespace havWndSwitcher
             }
 
             uint nextWindowOverrideMods = nextWindowMods | overrideModifier;
-            if (nextWindowOverrideMods != nextWindowMods)
+            if (nextWindowOverrideMods != nextWindowMods && ConfigService.CurrentConfig.NextWindowKey != (int)Keys.F12)
             {
                 NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_NEXT_WINDOW_OVERRIDE, nextWindowOverrideMods, ConfigService.CurrentConfig.NextWindowKey);
             }
 
             uint previousWindowOverrideMods = previousWindowMods | overrideModifier;
-            if (previousWindowOverrideMods != previousWindowMods)
+            if (previousWindowOverrideMods != previousWindowMods && ConfigService.CurrentConfig.PreviousWindowKey != (int)Keys.F12)
             {
                 NativeHotkeys.RegisterHotKey(_msgWindow.Handle, HOTKEY_PREVIOUS_WINDOW_OVERRIDE, previousWindowOverrideMods, ConfigService.CurrentConfig.PreviousWindowKey);
             }
@@ -1187,7 +1193,7 @@ namespace havWndSwitcher
             var assemblyName = Assembly.GetExecutingAssembly().GetName();
             var version = assemblyName.Version?.ToString() ?? Localization.Entry("Value_Unknown");
             MessageBox.Show(
-                $"{Localization.Entry("App_Title")}\n{Localization.Entry("About_Version")} {version}\nCopyright © 2025 René Nicolaus\n\n{Localization.Entry("About_Body")}",
+                $"{Localization.Entry("App_Title")}\n{Localization.Entry("About_Version")} {version}\nCopyright © 2025-2026 René Nicolaus\n\n{Localization.Entry("About_Body")}",
                 Localization.Entry("Menu_About"),
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information

@@ -32,6 +32,7 @@
   "Dialog_PressAKey": "Press a key...",
   "About_Body": "Global hotkey window switcher.",
   "About_Version": "Version",
+  "Hotkeys_F12NotAllowed": "F12 cannot be used as a global hotkey. Choose another key.",
   "Hotkeys_Updated": "Settings updated",
   "Hotkeys_Restarted": "Hotkeys restarted",
   "Hotkeys_Restart_Failed": "Hotkeys could not be registered. Try changing keys in config.",
